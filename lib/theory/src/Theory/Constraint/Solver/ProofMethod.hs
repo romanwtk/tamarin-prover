@@ -605,7 +605,12 @@ oracleRanking :: (System -> [AnnotatedGoal] -> [AnnotatedGoal])
 oracleRanking preSort oracle quitOnEmpty ctxt _sys ags0 = unsafePerformIO $ do
   let ags = preSort _sys ags0
   let inp = unlines $ zipWith (\i ag -> show i ++": "++ (concat . lines . render $ pgoal ag)) [(0::Int)..] ags
-  outp <- readProcess (oraclePath oracle) [ L.get pcLemmaName ctxt ] inp
+  let sourceRule goal = case goalRule _sys goal of
+        Just ru -> getRuleName ru
+        Nothing -> ""
+  -- Provide the goals with their source rule names to the oracle.
+  -- show (zip (map render $ (map pgoal ags0)) (map sourceRule (map fst ags0))) (map (\proto -> L.get praciName proto)(map (\node -> L.get rInfo node)
+  outp <- readProcess (oraclePath oracle) [L.get pcLemmaName ctxt, show (map (\node -> L.get rInfo node) (map snd (M.toList (L.get sNodes _sys))))] inp
 
   let indices = mapMaybe readMay $ lines outp
       ranked = mapMaybe (atMay ags) indices
